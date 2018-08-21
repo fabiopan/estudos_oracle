@@ -584,7 +584,6 @@ IPV6_PEERDNS=yes
 IPV6_PEERROUTES=yes
 IPV6_FAILURE_FATAL=no
 NAME=enp0s3
-UUID=a3bd8cec-ec5e-4963-9c6b-6b3068d7dc99
 ONBOOT=yes
 IPADDR=192.168.0.3
 DNS1=192.168.0.3
@@ -826,8 +825,10 @@ Using default group oinstall to install package
 Updating / installing...
    1:cvuqdisk-1.0.10-1                ################################# [100%]
 
+[root@croacia02 ~]# rm cvuqdisk-1.0.10-1.rpm
 
-[root@croacia01 ~]# cp /etc/security/limits.d/oracle-database-preinstall-18c.conf /etc/security/limits.d/grid-18c.conf
+[root@croacia01 ~]# cd /u01/oracle/binarios/
+[root@croacia01 binarios]# rm -rf LINUX.X64_180000_grid_home.zip
 
 [root@croacia01 ~]# su - grid
 
