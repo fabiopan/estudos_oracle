@@ -1,0 +1,854 @@
+##########################################################################################################################
+#                                                                                                                        #
+# Configurando variável de ambiente para o diretório on estão as VMs                                                     #
+# Executar CMD como Administrador                                                                                        #
+#                                                                                                                        #
+##########################################################################################################################
+C:\WINDOWS\system32> SETX VMS_PATH "%USERPROFILE%\VirtualBox VMs" -m
+C:\WINDOWS\system32> exit
+
+##########################################################################################################################
+#                                                                                                                        #
+# Configurando a VM                                                                                                      #
+# Criar arquivo %VMS_PATH%\create_vm.cmd                                                                                 #
+#                                                                                                                        #
+##########################################################################################################################
+echo off
+rem *********************************************
+rem referência https://www.virtualbox.org/manual/
+rem *********************************************
+
+set name=vm-croacia01
+set prefix=croacia
+set path_iso_so=%userprofile%\Downloads\V46135-01.iso
+set path_vms=%userprofile%\VirtualBox VMs
+set path_hd=%path_vms%\%name%\vmhd.vdi
+set bridge_adapter="Dell Wireless 1705 802.11b|g|n (2.4GHZ)"
+set intnet_name=racpriv
+
+echo Criando Maquina Virtual
+vboxmanage createvm --name %name% --ostype "Linux_64" --basefolder "%path_vms%" --register
+
+echo Atribuindo Memoria
+vboxmanage modifyvm %name% --memory 8192 --vram 16 --rtcuseutc on
+
+echo Habilitando USB/Mouse
+vboxmanage modifyvm %name% --usb on --mouse usbtablet
+vboxmanage modifyvm %name% --mouse usbtablet
+
+echo Criando Controladoras de Discos
+vboxmanage storagectl %name% --name "IDE" --add ide --controller PIIX4
+vboxmanage storagectl %name% --name "SATA" --add sata --controller IntelAHCI
+
+echo Criando Discos
+vboxmanage createhd --filename "%path_hd%" --size 95488 --format VDI 
+rem vboxmanage createhd --filename "%path_vms%storage\dsk_%prefix%_data_001.vdi" --size 32768 --format VDI --variant Standard
+rem vboxmanage createhd --filename "%path_vms%storage\dsk_%prefix%_fra_001.vdi" --size 8192 --format VDI --variant Standard
+rem vboxmanage createhd --filename "%path_vms%storage\dsk_%prefix%_arch_001.vdi" --size 2048 --format VDI --variant Standard
+rem vboxmanage createhd --filename "%path_vms%storage\dsk_%prefix%_redo_001.vdi" --size 2048 --format VDI --variant Standard
+
+echo Atribuindo Discos
+vboxmanage storageattach %name% --storagectl "IDE" --port 1 --device 0 --type dvddrive --medium "%path_iso_so%"
+vboxmanage storageattach %name% --storagectl "SATA" --port 0 --device 0 --type hdd --medium "%path_hd%"
+rem vboxmanage storageattach %name% --storagectl "IDE" --port 1 --device 0 --type dvddrive --medium emptydrive
+rem vboxmanage storageattach %name% --storagectl "SATA" --port 1 --device 0 --type hdd --medium "C:\Users\Pan\VMs\storage\dsk_%prefix%_data_001.vdi" --mtype normal
+rem vboxmanage storageattach %name% --storagectl "SATA" --port 2 --device 0 --type hdd --medium "C:\Users\Pan\VMs\storage\dsk_%prefix%_fra_001.vdi" --mtype normal
+rem vboxmanage storageattach %name% --storagectl "SATA" --port 3 --device 0 --type hdd --medium "C:\Users\Pan\VMs\storage\dsk_%prefix%_arch_001.vdi" --mtype normal
+rem vboxmanage storageattach %name% --storagectl "SATA" --port 4 --device 0 --type hdd --medium "C:\Users\Pan\VMs\storage\dsk_%prefix%_redo_001.vdi" --mtype normal
+
+rem ******* se precisar remover os discos **********
+rem vboxmanage showvminfo %name% | find "UUID"
+rem vboxmanage storageattach %name% --storagectl "SATA" --port 1 --device 0 --medium none
+rem vboxmanage storageattach %name% --storagectl "SATA" --port 2 --device 0 --medium none
+rem vboxmanage storageattach %name% --storagectl "SATA" --port 3 --device 0 --medium none
+rem vboxmanage storageattach %name% --storagectl "SATA" --port 4 --device 0 --medium none
+rem vboxmanage closemedium disk 973adf6c-7316-4a38-9272-08b5da787afb --delete
+rem vboxmanage closemedium disk 2314aef1-f653-4e00-a24a-b2753a417a3e --delete
+rem vboxmanage closemedium disk 21420926-44f5-4ee8-a1d6-148789a53514 --delete
+rem vboxmanage closemedium disk 407abd3b-6997-4939-995f-80543f7191ef --delete
+
+echo Atribuindo Interfaces de Rede
+vboxmanage modifyvm %name% --nic1 bridged --bridgeadapter1 %bridge_adapter%
+vboxmanage modifyvm %name% --nic2 intnet --intnet2 "%intnet_name%"
+rem vboxmanage natnetwork add --netname natnet1 --network "192.168.15.0/24" --enable --dhcp on
+rem vboxmanage modifyvm %name% --nic2 hostonly --hostonlyadapter2 "VirtualBox Host-Only Ethernet Adapter"
+
+echo Definido Sequencia de Boot
+vboxmanage modifyvm %name% --boot1 dvd
+vboxmanage modifyvm %name% --boot2 disk
+vboxmanage modifyvm %name% --boot3 none
+
+echo Executar Maquina Virtual
+vboxmanage startvm %name%
+
+rem vboxmanage unregistervm %name% [--delete]
+
+echo Maquina Virtual Criada com Sucesso.
+pause
+
+C:\Users\Pan>%VMS_PATH%\create_vm.cmd vm-croacia01 croacia
+
+##########################################################################################################################
+#                                                                                                                        #
+# Install Oracle Linux 7                                                                                                 #
+# When installing Oracle Linux 7 e chosen in following order                                                             #
+#                                                                                                                        #
+##########################################################################################################################
+1. English as installation process language
+
+2. Americas, São Paulo as Date and Time
+
+3. Portuguese(Brasil) as keyboard
+
+4. Disk partitioning like that:	
+/			10360	MB
+/boot		256		MB	  <<<------ create a standard partition for /boot
+/home		5192	MB
+/tmp		4096	MB
+/u01		51200	MB
+/usr		5120	MB
+/var		8192	MB
+swap		11072	MB
+
+TOTAL 		95488	MB
+
+5. croacia01.lanpan.com as hostname
+
+6. I turn network interfaces on
+
+7. I have not modified u01ware selection set to “minimal install” and I have also set root password.
+
+##########################################################################################################################
+#                                                                                                                        #
+# Setting OS Hostname                                                                                                    #
+#                                                                                                                        #
+##########################################################################################################################
+
+[root@localhost ~]# hostnamectl status
+[root@localhost ~]# hostnamectl set-hostname croacia01.lanpan.com
+[root@localhost ~]# hostnamectl status
+
+##########################################################################################################################
+#                                                                                                                        #
+# Network Configuration                                                                                                  #
+#                                                                                                                        #
+##########################################################################################################################
+
+[root@croacia01 ~]# yum install -y deltarpm
+[root@croacia01 ~]# yum install -y net-tools
+
+[root@croacia01 ~]# vi /etc/hosts
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
+[root@croacia01 ~]# vi /etc/sysconfig/network
+NOZEROCONF=yes
+
+[root@croacia01 ~]# vi /etc/sysconfig/network-scripts/ifcfg-enp0s3
+HWADDR=08:00:27:7E:26:E5
+TYPE=Ethernet
+BOOTPROTO=none
+DEFROUTE=yes
+PEERDNS=yes
+PEERROUTES=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_PEERDNS=yes
+IPV6_PEERROUTES=yes
+IPV6_FAILURE_FATAL=no
+NAME=enp0s3
+UUID="3c36b8c2-334b-57c7-91b6-4401f3489c69"
+ONBOOT=yes
+IPADDR=192.168.0.2
+DNS1=192.168.0.2
+DNS2=192.168.0.3
+DNS3=192.168.0.1
+GATEWAY=192.168.0.1
+DOMAIN=lanpan.com
+
+[root@croacia01 ~]# /etc/init.d/network restart
+
+[root@croacia01 ~]# vi /etc/sysconfig/network-scripts/ifcfg-enp0s8
+HWADDR=08:00:27:1C:44:CD
+TYPE=Ethernet
+BOOTPROTO=none
+DEFROUTE=yes
+PEERDNS=yes
+PEERROUTES=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_PEERDNS=yes
+IPV6_PEERROUTES=yes
+IPV6_FAILURE_FATAL=no
+NAME=enp0s8
+UUID=920f0cf2-1f29-4a62-8a60-72713c90f6ae
+ONBOOT=yes
+IPADDR=10.10.10.50
+
+[root@croacia01 ~]# shutdown -P now
+
+##########################################################################################################################
+#                                                                                                                        #
+# Desanexando disco e Definido Sequencia de Boot                                                                         #
+#                                                                                                                        #
+##########################################################################################################################
+
+C:\Users\fabio>set name=vm-croacia01
+C:\Users\fabio>vboxmanage storageattach %name% --storagectl "IDE" --port 1 --device 0 --type dvddrive --medium emptydrive
+C:\Users\fabio>vboxmanage modifyvm %name% --boot1 disk
+C:\Users\fabio>vboxmanage modifyvm %name% --boot2 dvd
+C:\Users\fabio>vboxmanage startvm %name%
+
+##########################################################################################################################
+#                                                                                                                        #
+# Shared Memory (SHM) (/dev/shm)                                                                                         #
+#                                                                                                                        #
+##########################################################################################################################
+
+--Verify that shared memory (/dev/shm) is mounted properly with sufficient size using the following command
+
+[root@croacia01 ~]# df -h /dev/shm
+Filesystem      Size  Used Avail Use% Mounted on
+tmpfs           3.8G     0  3.8G   0% /dev/shm
+
+--Change mount settings
+
+[root@croacia01 ~]# vi /etc/fstab
+/dev/mapper/rhel-dev_shm /dev/shm                xfs     defaults,size=4G,rw,exec        0 0
+
+[root@croacia01 ~]# mount -o remount /dev/shm
+
+--Verify again
+
+[root@croacia01 ~]# df -h /dev/shm
+Filesystem      Size  Used Avail Use% Mounted on
+tmpfs           4.0G     0  4.0G   0% /dev/shm
+
+##########################################################################################################################
+#                                                                                                                        #
+# NTP Configuration                                                                                                      #
+# The ntpd program is an operating system daemon which sets and maintains the system time, synchronizing with            #
+# Internet standard time servers                                                                                         #
+#                                                                                                                        #
+##########################################################################################################################
+
+[root@croacia01 ~]# yum install -y ntp
+[root@croacia01 ~]# vi /etc/ntp.conf
+/* Procure o seguinte: */
+Use public servers from the pool.ntp.org project
+
+[root@croacia01 ~]# systemctl start ntpd.service
+[root@croacia01 ~]# systemctl enable ntpd.service
+[root@croacia01 ~]# systemctl status ntpd.service
+
+[root@croacia01 ~]# vi /etc/sysconfig/ntpd
+# Command line options for ntpd
+#OPTIONS="-g"
+OPTIONS="-x -u ntp:ntp -p /var/run/ntpd.pid -g"
+
+##########################################################################################################################
+#                                                                                                                        #
+# Configuring Security­Enhanced Linux (SELinux)                                                                          #
+# The purpose of SELinux is to apply rules on files and processes based on defined policies                              #
+#                                                                                                                        #
+##########################################################################################################################
+
+[root@croacia01 ~]# sestatus
+/* verify that SELinux is running and set to ENFORCING */
+
+##########################################################################################################################
+#                                                                                                                        #
+# Disable Firewall Settings                                                                                              #
+#                                                                                                                        #
+##########################################################################################################################
+
+#[root@croacia01 ~]# firewall-cmd --zone=public --add-port=1521/tcp --permanent 
+#[root@croacia01 ~]# firewall-cmd --zone=trusted --add-interface=enp0s9 --permanent
+#[root@croacia01 ~]# systemctl restart firewalld.service
+#[root@croacia01 ~]# firewall-cmd --zone=public --list-all
+#[root@croacia01 ~]# firewall-cmd --complete-reload
+
+[root@croacia01 ~]# systemctl status firewalld.service
+[root@croacia01 ~]# systemctl disable firewalld.service
+[root@croacia01 ~]# systemctl stop firewalld.service
+
+##########################################################################################################################
+#                                                                                                                        #
+# Oracle Preinstallation RPM and minimum installation                                                                    #
+#                                                                                                                        #
+##########################################################################################################################
+
+[root@croacia01 ~]# yum install -y xorg-x11-apps
+[root@croacia01 ~]# yum install -y bzip2
+[root@croacia01 ~]# yum install -y sudo
+[root@croacia01 ~]# yum install -y perl perl-Env perl-XML-Parser
+
+[root@croacia01 ~]# yum install -y oracle-database-preinstall-18c
+[root@croacia01 ~]# sysctl -p
+[root@croacia01 ~]# cat /var/log/oracle-database-preinstall-18c/backup/Jul-31-2018-18-09-37/orakernel.log
+
+[root@croacia01 ~]# rpm -qa | grep ssh
+libssh2-1.4.3-10.el7_2.1.x86_64
+openssh-7.4p1-16.el7.x86_64
+openssh-clients-7.4p1-16.el7.x86_64
+openssh-server-7.4p1-16.el7.x86_64
+
+##########################################################################################################################
+#                                                                                                                        #
+# User Accounts & Groups                                                                                                 #
+#                                                                                                                        #
+##########################################################################################################################
+
+[root@croacia01 ~]# /usr/sbin/groupadd -g 54321 oinstall      *já criado com yum install oracle-rdbms-server-12cR1-preinstall
+[root@croacia01 ~]# /usr/sbin/groupadd -g 54322 dba 			 *já criado com yum install oracle-rdbms-server-12cR1-preinstall
+[root@croacia01 ~]# /usr/sbin/groupadd -g 54331 asmadmin
+[root@croacia01 ~]# /usr/sbin/groupadd -g 54332 asmdba
+[root@croacia01 ~]# /usr/sbin/groupadd -g 54333 asmoper
+[root@croacia01 ~]# /usr/sbin/groupadd -g 54326 oper			*já criado com yum install oracle-rdbms-server-12cR1-preinstall
+[root@croacia01 ~]# /usr/sbin/groupadd -g 54327 backupdba	*já criado com yum install oracle-rdbms-server-12cR1-preinstall
+[root@croacia01 ~]# /usr/sbin/groupadd -g 54328 kmdba		*já criado com yum install oracle-rdbms-server-12cR1-preinstall
+[root@croacia01 ~]# /usr/sbin/groupadd -g 54329 dgdba		*já criado com yum install oracle-rdbms-server-12cR1-preinstall
+[root@croacia01 ~]# /usr/sbin/groupadd -g 54330 racdba		*já criado com yum install oracle-rdbms-server-12cR1-preinstall
+[root@croacia01 ~]# /usr/sbin/adduser -u 54322 -g oinstall -G asmadmin,asmdba,asmoper,dba,racdba -d /home/grid -m grid
+[root@croacia01 ~]# usermod -a -G oper,asmadmin,asmdba,asmoper,backupdba,kmdba,dgdba,racdba oracle
+[root@croacia01 ~]# passwd grid
+[root@croacia01 ~]# passwd oracle
+
+##########################################################################################################################
+#                                                                                                                        #
+# Preventing Installation Errors Caused by Terminal Output Commands                                                      #
+#                                                                                                                        #
+########################################################################################################################## 
+/* modify hidden files in each Oracle installation owner user home directory to suppress all output on STDOUT or STDERR */
+if [ -t 0 ]; then
+stty intr ^C
+fi
+
+[root@croacia01 ~]# su - grid
+
+[grid@croacia01 ~]$ vi .kshrc
+[grid@croacia01 ~]$ vi .bashrc
+[grid@croacia01 ~]$ vi .bash_logout
+
+[grid@croacia01 ~]$ exit
+
+[root@croacia01 ~]# su - oracle
+
+[oracle@croacia01 ~]$ vi .kshrc
+[oracle@croacia01 ~]$ vi .bashrc
+[oracle@croacia01 ~]$ vi .bash_logout
+
+[oracle@croacia01 ~]$ exit
+
+##########################################################################################################################
+#                                                                                                                        #
+# Creating Paths for grid user                                                                                           #
+#                                                                                                                        #
+########################################################################################################################## 
+
+[root@croacia01 ~]# mkdir -p /u01/oracle
+
+Inventory
+[root@croacia01 ~]# mkdir -p /u01/oracle/oraInventory
+[root@croacia01 ~]# chown -R grid:oinstall /u01/oracle/oraInventory
+
+Grid base:
+[root@croacia01 ~]# mkdir -p /u01/oracle/grid
+[root@croacia01 ~]# chown -R grid:oinstall /u01/oracle/grid
+
+Grid home:
+[root@croacia01 ~]# mkdir -p /u01/oracle/18.0.0/grid
+[root@croacia01 ~]# chown -R grid:oinstall /u01/oracle/18.0.0/grid
+
+Oracle base:
+[root@croacia01 ~]# mkdir -p /u01/oracle/db
+[root@croacia01 ~]# chown -R oracle:oinstall /u01/oracle/db
+
+Oracle Home:
+[root@croacia01 ~]# mkdir -p /u01/oracle/db/product/18.0.0/db_1
+[root@croacia01 ~]# chown -R oracle:oinstall /u01/oracle/db/product/18.0.0/db_1
+
+[root@croacia01 ~]# chmod -R 775 /u01
+
+[root@croacia01 ~]# mkdir -p /u01/oracle/binarios
+[root@croacia01 ~]# chown -R grid:oinstall /u01/oracle/binarios/
+
+[root@croacia01 ~]# chown -R grid:oinstall /u01
+
+[root@croacia01 ~]# visudo
+
+## Allows people in group wheel to run all commands
+# %wheel        ALL=(ALL)       ALL
+oracle          ALL=(ALL)       ALL
+
+## Same thing without a password
+# %wheel        ALL=(ALL)       NOPASSWD: ALL
+grid            ALL=(root)      NOPASSWD: ALL
+
+
+##########################################################################################################################
+#                                                                                                                        #
+# Instalando pacotes                                                                                                     #
+#                                                                                                                        #
+##########################################################################################################################
+
+[root@croacia01 ~]# yum install -y bind bind-utils
+
+##########################################################################################################################
+#                                                                                                                        #
+# Configurando o BIND                                                                                                    #
+#                                                                                                                        #
+##########################################################################################################################
+
+[root@croacia01 ~]# vi /etc/named.conf
+//
+// named.conf
+//
+// Provided by Red Hat bind package to configure the ISC BIND named(8) DNS
+// server as a caching only nameserver (as a localhost DNS resolver only).
+//
+// See /usr/share/doc/bind*/sample/ for example named configuration files.
+//
+// See the BIND Administrator's Reference Manual (ARM) for details about the
+// configuration located in /usr/share/doc/bind-{version}/Bv9ARM.html
+
+options {
+        listen-on port 53 { 127.0.0.1; 192.168.0.2;};
+        listen-on-v6 port 53 { ::1; };
+        directory       "/var/named";
+        dump-file       "/var/named/data/cache_dump.db";
+        statistics-file "/var/named/data/named_stats.txt";
+        memstatistics-file "/var/named/data/named_mem_stats.txt";
+        allow-query     { any; };
+
+        /*
+         - If you are building an AUTHORITATIVE DNS server, do NOT enable recursion.
+         - If you are building a RECURSIVE (caching) DNS server, you need to enable
+           recursion.
+         - If your recursive DNS server has a public IP address, you MUST enable access
+           control to limit queries to your legitimate users. Failing to do so will
+           cause your server to become part of large scale DNS amplification
+           attacks. Implementing BCP38 within your network would greatly
+           reduce such attack surface
+        */
+        recursion yes;
+
+        dnssec-enable yes;
+        dnssec-validation yes;
+
+        /* Path to ISC DLV key */
+        bindkeys-file "/etc/named.iscdlv.key";
+
+        managed-keys-directory "/var/named/dynamic";
+
+        pid-file "/run/named/named.pid";
+        session-keyfile "/run/named/session.key";
+
+};
+
+logging {
+        channel default_debug {
+                file "data/named.run";
+                severity dynamic;
+        };
+};
+
+zone "." IN {
+        type hint;
+        file "named.ca";
+};
+
+//my entries begin
+zone "lanpan.com" IN {
+        type master;
+        file "lanpan.com.db";
+};
+
+zone "0.168.192.in-addr.arpa" IN {
+        type master;
+        file "0.168.192.db";
+};
+//my entries end
+
+include "/etc/named.rfc1912.zones";
+include "/etc/named.root.key";
+
+##########################################################################################################################
+#                                                                                                                        #
+# Criando arquivos de zona                                                                                               #
+#                                                                                                                        #
+##########################################################################################################################
+
+[root@croacia01 ~]# vi /var/named/lanpan.com.db
+$TTL    86400
+@               IN SOA  earth.lanpan.com. root.lanpan.com. (
+                                        42              ; serial (d. adams)
+                                        3H              ; refresh
+                                        15M             ; retry
+                                        1W              ; expiry
+                                        1D )            ; minimum
+                IN NS           localhost
+localhost       IN A            127.0.0.1
+croacia01            IN A    192.168.0.2
+croacia02            IN A    192.168.0.3
+croacia01-priv          IN      A       10.10.10.50
+croacia02-priv          IN      A       10.10.10.51
+croacia01-vip        IN A    192.168.0.4
+croacia02-vip        IN A    192.168.0.5
+scan-croacia        IN A    192.168.0.6
+scan-croacia        IN A    192.168.0.7
+scan-croacia        IN A    192.168.0.8
+
+[root@croacia01 ~]# vi /var/named/0.168.192.db
+$TTL 24h
+@       IN      SOA     earth.lanpan.com. root.lanpan.com. (
+        2015083000      ; Serial
+        12h             ; Refresh
+        15m             ; Retry
+        3w              ; Expire
+        2h              ; Mininum TTL
+)
+
+@       IN      NS      earth.lanpan.com.
+
+2     IN PTR  croacia01.lanpan.com.
+3     IN PTR  croacia02.lanpan.com.
+4     IN PTR  croacia01-vip.lanpan.com.
+5     IN PTR  croacia02-vip.lanpan.com.
+6     IN PTR  scan-croacia.lanpan.com.
+7     IN PTR  scan-croacia.lanpan.com.
+8     IN PTR  scan-croacia.lanpan.com.
+
+##########################################################################################################################
+#                                                                                                                        #
+# Liberando o firewall e subindo o serviço                                                                               #
+#                                                                                                                        #
+##########################################################################################################################
+
+#[root@croacia01 ~]# firewall-cmd --permanent --add-service=dns
+#[root@croacia01 ~]# firewall-cmd --complete-reload
+[root@croacia01 ~]# systemctl enable named.service
+[root@croacia01 ~]# systemctl start named.service
+
+[root@croacia01 ~]# reboot
+[root@croacia01 ~]# nslookup scan-croacia
+
+##########################################################################################################################
+#                                                                                                                        #
+# clonando vm e configurando interfaces de rede                                                                          #
+#                                                                                                                        #
+########################################################################################################################## 
+
+C:\Users\fabio>vboxmanage list vms | find "croacia"
+"vm-croacia02" {137bd127-02cc-4084-bcaf-fb49409409eb}
+
+C:\Users\fabio>vboxmanage clonevm {137bd127-02cc-4084-bcaf-fb49409409eb} --name vm-croacia02 --basefolder "C:\Users\fabio\VirtualBox VMs" --register
+0%...10%...20%...30%...40%...50%...60%...70%...80%...90%...100%
+Machine has been successfully cloned as "vm-croacia02"
+
+C:\Users\fabio>vboxmanage list vms | find "croacia"
+"vm-croacia01" {aa49e642-d5e8-436f-b61f-9fbe8f1f5b89}
+"vm-croacia02" {0dc0d12e-57df-47ba-aed0-c9d2a604064e}
+
+C:\Users\fabio>vboxmanage startvm vm-croacia02
+
+##########################################################################################################################
+#                                                                                                                        #
+# Setting OS Hostname                                                                                                    #
+#                                                                                                                        #
+##########################################################################################################################
+[root@croacia01 ~]# hostnamectl status
+[root@croacia01 ~]# hostnamectl set-hostname croacia02.lanpan.com
+[root@croacia01 ~]# hostnamectl status
+
+C:\Users\fabio>VBoxmanage showvminfo vm-croacia02 | find "MAC" | find "Bridged Interface"
+NIC 1:           MAC: 080027834792, Attachment: Bridged Interface 'Dell Wireless 1705 802.11b|g|n (2.4GHZ)', Cable connected: on, Trace: off (file: none), Type: 82540EM, Reported speed: 0 Mbps, Boot priority: 0, Promisc Policy: deny, Bandwidth group: none
+
+[root@croacia02 ~]# vi /etc/sysconfig/network-scripts/ifcfg-enp0s3
+HWADDR=08:00:27:83:47:92
+TYPE=Ethernet
+BOOTPROTO=none
+DEFROUTE=yes
+PEERDNS=yes
+PEERROUTES=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_PEERDNS=yes
+IPV6_PEERROUTES=yes
+IPV6_FAILURE_FATAL=no
+NAME=enp0s3
+UUID=a3bd8cec-ec5e-4963-9c6b-6b3068d7dc99
+ONBOOT=yes
+IPADDR=192.168.0.3
+DNS1=192.168.0.3
+DNS2=192.168.0.2
+DNS3=192.168.0.1
+GATEWAY=192.168.0.1
+DOMAIN=lanpan.com
+
+[root@croacia02 ~]# reboot
+
+C:\Users\fabio>vboxmanage showvminfo vm-croacia02 | find "MAC" | find "Internal Network"
+NIC 2:           MAC: 0800275DB1E0, Attachment: Internal Network 'racpriv', Cable connected: on, Trace: off (file: none), Type: 82540EM, Reported speed: 0 Mbps, Boot priority: 0, Promisc Policy: deny, Bandwidth group: none
+
+[root@croacia02 ~]# vi /etc/sysconfig/network-scripts/ifcfg-enp0s8
+HWADDR=08:00:27:5D:B1:E0
+TYPE=Ethernet
+BOOTPROTO=none
+DEFROUTE=yes
+PEERDNS=yes
+PEERROUTES=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_PEERDNS=yes
+IPV6_PEERROUTES=yes
+IPV6_FAILURE_FATAL=no
+NAME=enp0s8
+UUID=350c8a09-ee60-4e79-9c9f-c7ff4b894e05
+ONBOOT=yes
+IPADDR=10.10.10.51
+
+[root@croacia02 ~]# /etc/init.d/network restart
+
+[root@croacia02 ~]# nmcli con show
+NAME    UUID                                  TYPE            DEVICE
+enp0s3  3c36b8c2-334b-57c7-91b6-4401f3489c69  802-3-ethernet  enp0s3
+enp0s8  350c8a09-ee60-4e79-9c9f-c7ff4b894e05  802-3-ethernet  enp0s8
+
+[root@croacia02 ~]# nmcli d
+DEVICE  TYPE      STATE                                  CONNECTION
+enp0s3  ethernet  connected                              enp0s3
+enp0s8  ethernet  connecting (getting IP configuration)  enp0s8
+lo      loopback  unmanaged                              --
+
+##########################################################################################################################
+#                                                                                                                        #
+# Configurando o BIND                                                                                                    #
+#                                                                                                                        #
+##########################################################################################################################
+
+[root@croacia02 ~]# vi /etc/named.conf
+//
+// named.conf
+//
+// Provided by Red Hat bind package to configure the ISC BIND named(8) DNS
+// server as a caching only nameserver (as a localhost DNS resolver only).
+//
+// See /usr/share/doc/bind*/sample/ for example named configuration files.
+//
+// See the BIND Administrator's Reference Manual (ARM) for details about the
+// configuration located in /usr/share/doc/bind-{version}/Bv9ARM.html
+
+options {
+        listen-on port 53 { 127.0.0.1; 192.168.0.3;};
+        listen-on-v6 port 53 { ::1; };
+        directory       "/var/named";
+        dump-file       "/var/named/data/cache_dump.db";
+        statistics-file "/var/named/data/named_stats.txt";
+        memstatistics-file "/var/named/data/named_mem_stats.txt";
+        allow-query     { any; };
+
+        /*
+         - If you are building an AUTHORITATIVE DNS server, do NOT enable recursion.
+         - If you are building a RECURSIVE (caching) DNS server, you need to enable
+           recursion.
+         - If your recursive DNS server has a public IP address, you MUST enable access
+           control to limit queries to your legitimate users. Failing to do so will
+           cause your server to become part of large scale DNS amplification
+           attacks. Implementing BCP38 within your network would greatly
+           reduce such attack surface
+        */
+        recursion yes;
+
+        dnssec-enable yes;
+        dnssec-validation yes;
+
+        /* Path to ISC DLV key */
+        bindkeys-file "/etc/named.iscdlv.key";
+
+        managed-keys-directory "/var/named/dynamic";
+
+        pid-file "/run/named/named.pid";
+        session-keyfile "/run/named/session.key";
+
+};
+
+logging {
+        channel default_debug {
+                file "data/named.run";
+                severity dynamic;
+        };
+};
+
+zone "." IN {
+        type hint;
+        file "named.ca";
+};
+
+//my entries begin
+zone "lanpan.com" IN {
+        type master;
+        file "lanpan.com.db";
+};
+
+zone "0.168.192.in-addr.arpa" IN {
+        type master;
+        file "0.168.192.db";
+};
+//my entries end
+
+include "/etc/named.rfc1912.zones";
+include "/etc/named.root.key";
+
+
+[root@croacia02 ~]# reboot
+
+##########################################################################################################################
+#                                                                                                                        #
+# User Equivalence                                                                                                       #
+#                                                                                                                        #
+##########################################################################################################################
+
+[root@croacia01 ~]# su - grid
+[grid@croacia01 ~]$ pwd
+/home/grid
+[grid@croacia01 ~]$ /bin/rm -rf .ssh
+[grid@croacia01 ~]$ mkdir .ssh
+[grid@croacia01 ~]$ cd .ssh
+[grid@croacia01 .ssh]$ ssh-keygen -t dsa
+[grid@croacia01 .ssh]$ ssh-keygen -t rsa
+[grid@croacia01 .ssh]$ cat *.pub >> authorized_keys
+
+[root@croacia02 ~]# su - grid
+[grid@croacia02 ~]$ pwd
+/home/grid
+[grid@croacia02 ~]$ /bin/rm -rf .ssh
+[grid@croacia02 ~]$ mkdir .ssh
+[grid@croacia02 ~]$ cd .ssh
+[grid@croacia02 .ssh]$ ssh-keygen -t dsa
+[grid@croacia02 .ssh]$ ssh-keygen -t rsa
+[grid@croacia02 .ssh]$ cat *.pub >> authorized_keys
+
+[grid@croacia01 .ssh]$ ssh grid@croacia02 cat /home/grid/.ssh/*.pub >> authorized_keys
+[grid@croacia02 .ssh]$ ssh grid@croacia01 cat /home/grid/.ssh/*.pub >> authorized_keys
+
+[grid@croacia01 .ssh]$ ssh croacia01 date
+[grid@croacia01 .ssh]$ ssh croacia01.lanpan.com date
+[grid@croacia01 .ssh]$ ssh croacia01-priv date
+[grid@croacia01 .ssh]$ ssh croacia01-priv.lanpan.com date
+[grid@croacia01 .ssh]$ ssh croacia02 date
+[grid@croacia01 .ssh]$ ssh croacia02.lanpan.com date
+[grid@croacia01 .ssh]$ ssh croacia02-priv date
+[grid@croacia01 .ssh]$ ssh croacia02-priv.lanpan.com date
+[grid@croacia01 .ssh]$ exit
+
+[grid@croacia02 .ssh]$ ssh croacia01 date
+[grid@croacia02 .ssh]$ ssh croacia01.lanpan.com date
+[grid@croacia02 .ssh]$ ssh croacia01-priv date
+[grid@croacia02 .ssh]$ ssh croacia01-priv.lanpan.com date
+[grid@croacia02 .ssh]$ ssh croacia02 date
+[grid@croacia02 .ssh]$ ssh croacia02.lanpan.com date
+[grid@croacia02 .ssh]$ ssh croacia02-priv date
+[grid@croacia02 .ssh]$ ssh croacia02-priv.lanpan.com date
+[grid@croacia02 .ssh]$ exit
+
+[root@vm-oel6-ita1 ~]# su - oracle
+[oracle@croacia01 ~]$ pwd
+/home/oracle
+[oracle@croacia01 ~]$ /bin/rm -rf .ssh
+[oracle@croacia01 ~]$ mkdir .ssh
+[oracle@croacia01 ~]$ cd .ssh
+[oracle@croacia01 .ssh]$ ssh-keygen -t dsa
+[oracle@croacia01 .ssh]$ ssh-keygen -t rsa
+[oracle@croacia01 .ssh]$ cat *.pub >> authorized_keys
+
+[root@vm-oel6-ita2 ~]# su - oracle
+[oracle@croacia02 ~]$ pwd
+/home/oracle
+[oracle@croacia02 ~]$ /bin/rm -rf .ssh
+[oracle@croacia02 ~]$ mkdir .ssh
+[oracle@croacia02 ~]$ cd .ssh
+[oracle@croacia02 .ssh]$ ssh-keygen -t dsa
+[oracle@croacia02 .ssh]$ ssh-keygen -t rsa
+[oracle@croacia02 .ssh]$ cat *.pub >> authorized_keys
+
+[oracle@croacia01 .ssh]$ ssh oracle@croacia02 cat /home/oracle/.ssh/*.pub >> authorized_keys
+[oracle@croacia02 .ssh]$ ssh oracle@croacia01 cat /home/oracle/.ssh/*.pub >> authorized_keys
+
+[oracle@croacia01 .ssh]$ ssh croacia01 date
+[oracle@croacia01 .ssh]$ ssh croacia01.lanpan.com date
+[oracle@croacia01 .ssh]$ ssh croacia01-priv date
+[oracle@croacia01 .ssh]$ ssh croacia01-priv.lanpan.com date
+[oracle@croacia01 .ssh]$ ssh croacia02 date
+[oracle@croacia01 .ssh]$ ssh croacia02.lanpan.com date
+[oracle@croacia01 .ssh]$ ssh croacia02-priv date
+[oracle@croacia01 .ssh]$ ssh croacia02-priv.lanpan.com date
+
+[oracle@croacia02 .ssh]$ ssh croacia01 date
+[oracle@croacia02 .ssh]$ ssh croacia01.lanpan.com date
+[oracle@croacia02 .ssh]$ ssh croacia01-priv date
+[oracle@croacia02 .ssh]$ ssh croacia01-priv.lanpan.com date
+[oracle@croacia02 .ssh]$ ssh croacia02 date
+[oracle@croacia02 .ssh]$ ssh croacia02.lanpan.com date
+[oracle@croacia02 .ssh]$ ssh croacia02-priv date
+[oracle@croacia02 .ssh]$ ssh croacia02-priv.lanpan.com date
+
+##########################################################################################################################
+#                                                                                                                        #
+# Unzip Grid                                                                                                             #
+#                                                                                                                        #
+########################################################################################################################## 
+
+[grid@croacia01 ~]# cd /u01/oracle/binarios/
+[grid@croacia01 binarios]# unzip -q LINUX.X64_180000_grid_home.zip -d /u01/oracle/18.0.0/grid
+
+[root@croacia01 ~]# cd /u01/oracle/18.0.0/grid/cv/rpm/
+[root@croacia01 rpm]# rpm -Uvh cvuqdisk*
+Preparing...                          ################################# [100%]
+Using default group oinstall to install package
+Updating / installing...
+   1:cvuqdisk-1.0.10-1                ################################# [100%]
+
+[root@croacia01 rpm]# scp cvuqdisk-1.0.10-1.rpm root@croacia01:/root
+
+[root@croacia02 ~]# rpm -Uvh cvuqdisk*
+Preparing...                          ################################# [100%]
+Using default group oinstall to install package
+Updating / installing...
+   1:cvuqdisk-1.0.10-1                ################################# [100%]
+
+
+[root@croacia01 ~]# cp /etc/security/limits.d/oracle-database-preinstall-18c.conf /etc/security/limits.d/grid-18c.conf
+
+[root@croacia01 ~]# su - grid
+
+[grid@croacia01 ~]$ cd /u01/oracle/18.0.0/grid
+[grid@croacia01 grid]$ ./runcluvfy.sh stage -pre crsinst -n croacia01,croacia02 -verbose
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+runcluvfy.sh stage -pre crsinst -upgrade -src_crshome /scratch/grid12102home -dest_crshome /scratch/app/cuser/product/18.0.0.0/gridsk -dest_version 18.0.0.0.0 -verbose
