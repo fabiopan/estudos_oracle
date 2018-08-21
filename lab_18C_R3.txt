@@ -1,5 +1,5 @@
 ﻿##########################################################################################################################
-# Autor Fabio Pan ----- gay
+# Autor Fabio Pan
 #                                                                                                                        #
 # Configurando variável de ambiente para o diretório on estão as VMs                                                     #
 # Executar CMD como Administrador                                                                                        #
