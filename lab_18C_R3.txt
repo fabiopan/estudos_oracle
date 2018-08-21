@@ -298,6 +298,14 @@ openssh-7.4p1-16.el7.x86_64
 openssh-clients-7.4p1-16.el7.x86_64
 openssh-server-7.4p1-16.el7.x86_64
 
+[root@croacia01 ~]# cd /etc/security/limits.d
+[root@croacia01 ~]# vi oracle-database-preinstall-18c.conf
+# my setting
+grid    hard    nofile  65536
+grid    soft    stack   10240
+
+[root@croacia01 limits.d]# /sbin/sysctl -p
+
 ##########################################################################################################################
 #                                                                                                                        #
 # User Accounts & Groups                                                                                                 #
