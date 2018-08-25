@@ -843,16 +843,131 @@ Updating / installing...
 [grid@croacia01 ~]$ cd /u01/oracle/18.0.0/grid
 [grid@croacia01 grid]$ ./runcluvfy.sh stage -pre crsinst -n croacia01,croacia02 -verbose
 
+[root@croacia01 ~]# shutdown -P now
+[root@croacia02 ~]# shutdown -P now
+
+##########################################################################################################################
+#                                                                                                                        #
+# Create Disks for data                                                                                                  #
+#                                                                                                                        #
+########################################################################################################################## 
+
+C:\Users\fabio>vboxmanage createhd --filename "C:\Users\fabio\VirtualBox VMs\storage\dsk_croacia_1.vdi" --size 32768 --format VDI --variant fixed
+C:\Users\fabio>vboxmanage createhd --filename "C:\Users\fabio\VirtualBox VMs\storage\dsk_croacia_2.vdi" --size 32768 --format VDI --variant fixed
+
+C:\Users\fabio>vboxmanage storageattach vm-croacia01 --storagectl "SATA" --port 1 --device 0 --type hdd --medium "C:\Users\fabio\VirtualBox VMs\storage\dsk_croacia_1.vdi" --mtype shareable
+C:\Users\fabio>vboxmanage storageattach vm-croacia01 --storagectl "SATA" --port 2 --device 0 --type hdd --medium "C:\Users\fabio\VirtualBox VMs\storage\dsk_croacia_2.vdi" --mtype shareable
+C:\Users\fabio>vboxmanage storageattach vm-croacia02 --storagectl "SATA" --port 1 --device 0 --type hdd --medium "C:\Users\fabio\VirtualBox VMs\storage\dsk_croacia_1.vdi" --mtype shareable
+C:\Users\fabio>vboxmanage storageattach vm-croacia02 --storagectl "SATA" --port 2 --device 0 --type hdd --medium "C:\Users\fabio\VirtualBox VMs\storage\dsk_croacia_2.vdi" --mtype shareable
+
+C:\Users\fabio>vboxmanage startvm vm-croacia01
+
+[root@croacia01 ~]# ls /dev/sd*
+/dev/sda  /dev/sda1  /dev/sda2  /dev/sdb  /dev/sdc
+
+[root@croacia01 ~]# fdisk /dev/sdb
+n
+p
+"enter"
+"enter"
+"enter"
+w
+
+[root@croacia01 ~]# fdisk /dev/sdc
+n
+p
+"enter"
+"enter"
+"enter"
+w
+
+[root@croacia01 ~]# reboot
+[root@croacia02 ~]# reboot
+
+[root@croacia01 ~]# vi /etc/scsi_id.config
+options=-g
+[root@croacia02 ~]# vi /etc/scsi_id.config
+options=-g
+
+[root@croacia01 ~]# /lib/udev/scsi_id -g -u -d /dev/sdb
+1ATA_VBOX_HARDDISK_VBb701b804-2244e19c
+[root@croacia01 ~]# /lib/udev/scsi_id -g -u -d /dev/sdc
+1ATA_VBOX_HARDDISK_VB5f4a8f70-81ac1c9f
+
+[root@croacia01 ~]# vi /etc/udev/rules.d/99-oracle-asmdevices.rules
+KERNEL=="sd?1", SUBSYSTEM=="block", PROGRAM=="/usr/lib/udev/scsi_id -g -u -d /dev/$parent", RESULT=="1ATA_VBOX_HARDDISK_VBb701b804-2244e19c", SYMLINK+="dsk_croacia_1", OWNER="grid", GROUP="asmdba", MODE="0660"
+KERNEL=="sd?1", SUBSYSTEM=="block", PROGRAM=="/usr/lib/udev/scsi_id -g -u -d /dev/$parent", RESULT=="1ATA_VBOX_HARDDISK_VB5f4a8f70-81ac1c9f", SYMLINK+="dsk_croacia_2", OWNER="grid", GROUP="asmdba", MODE="0660"
+
+[root@croacia01 ~]# scp /etc/udev/rules.d/99-oracle-asmdevices.rules root@croacia02:/etc/udev/rules.d/99-oracle-asmdevices.rules
+root@croacia02's password:
+99-oracle-asmdevices.rules                                                                                    100%  420     0.4KB/s   00:00
+
+[root@croacia01 ~]# /sbin/partprobe /dev/sdb1
+[root@croacia01 ~]# /sbin/partprobe /dev/sdc1
+
+[root@croacia01 ~]# chown grid:asmdba /dev/sdb1
+[root@croacia01 ~]# chown grid:asmdba /dev/sdc1
+
+[root@croacia01 ~]# udevadm control --reload-rules
+
+
+[root@croacia01 ~]# ls -ll /dev/dsk*
+lrwxrwxrwx. 1 root root 4 Aug 21 23:31 /dev/dsk_croacia_1 -> sdb1
+lrwxrwxrwx. 1 root root 4 Aug 21 23:31 /dev/dsk_croacia_2 -> sdc1
+
+[root@croacia01 ~]# reboot
+[root@croacia02 ~]# reboot
+
+su - 
+
+export ORACLE_HOME=/u01/oracle/18.0.0/grid
+export ORACLE_BASE=/u01/oracle/18.0.0
+/u01/oracle/18.0.0/grid/bin/asmcmd afd_label DATA1 /dev/sdb1 --init
+/u01/oracle/18.0.0/grid/bin/asmcmd afd_label DATA2 /dev/sdc1 --init
+
+/u01/oracle/18.0.0/grid/bin/asmcmd afd_lslbl /dev/sdb1
+/u01/oracle/18.0.0/grid/bin/asmcmd afd_lslbl /dev/sdc1
+
+[grid@croacia01 ~]$ vi .bash_profile
+# .bash_profile
+
+# Get the aliases and functions
+if [ -f ~/.bashrc ]; then
+        . ~/.bashrc
+fi
+
+# User specific environment and startup programs
+umask 022
+export umask
+
+if [ -t 0 ]; then
+stty intr ^C
+fi
+
+PS1="[\u@\h:\w]$ "
+
+export ORACLE_BASE=/u01/oracle/grid
+export ORACLE_HOME=/u01/oracle/18.0.0/grid
+export ORACLE_SID=+ASM1
+export LIBPATH=$ORACLE_HOME/lib:/usr/lib:/lib
+export NLS_LANG=AMERICAN_AMERICA.WE8ISO8859P15
+export EDITOR=vi
+export TNS_ADMIN=$ORACLE_HOME/network/admin
+export NLS_DATE_FORMAT='DD/MM/YYYY HH24:MI:SS'
+export PATH=.:$HOME/.local/bin:$HOME/bin:/usr/sbin:/usr/lbin:/etc:/usr/bin:/usr/ccs/bin/make:/usr/ucb:/usr/bin/X11:/sbin:/bin:/opt/sfw/bin:$ORACLE_HOME/bin:$ORACLE_HOME/OPatch
+alias bd='cd $ORACLE_BASE/diag/asm/+asm1/$ORACLE_SID/trace'
+alias oh='cd $ORACLE_HOME'
+alias s='sqlplus / as sysasm'
 
 
 
 
+opatch lsinventory -detail -oh $ORACLE_HOME
 
+/u01/oracle/18.0.0/grid/OPatch/opatchauto apply /u01/oracle/binarios/28096386 -oh /u01/oracle/18.0.0/grid
 
-
-
-
-
+[root@croacia01 ~]# mkdir -p /u01/oracle/db/product/11.2.0/db_1
+[root@croacia01 ~]# chown -R oracle:oinstall /u01/oracle/db/product/11.2.0/db_1
 
 
 
